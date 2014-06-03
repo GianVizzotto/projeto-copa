@@ -21,31 +21,41 @@ if( $argv[1] == 'id' && $argv[2] ) {
 }
 
 class powerNetwork {
+	var $glob;
 	
+	/**
+	 * 
+	 * Retorna um array com os registros encontrados a partir do nome passado em argv
+	 * @param resource $conn
+	 * @param string $name
+	 */
 	function build($conn, $name) {
-// 		$n_aux = explode($name, ' ');
-// 		if(count($n_aux) > 1 ) {
-// 			
-// 		}
-		
- 		$result = mysql_db_query('proprietarios_redes', "select * from assoc where lower(nome) like lower(('%".trim($name)."%'))", $conn);
-//  		echo "select * from assoc where lower(nome) like lower(('%".$name."%'))";
-		if(!$result) {
+		$result = mysql_db_query('proprietarios_redes', "select * from assoc where lower(nome) like lower(('%".trim($name)."%'))", $conn);
+
+		if( !$result ) {
  			echo ("Rede de poder não encontrada\n");
  			
 			return false;
 		}
 
-		$power = [];
- 		while($row = mysql_fetch_array($result, MYSQL_ASSOC)) {
+		$power = array();
+ 		while( $row = mysql_fetch_array($result, MYSQL_ASSOC) ) {
 			$power[] = $row;
   		}
   		
    		print_r($power);
-//   		die('Achou');
+
   		return $power;
 	}
 	
+	/**
+	 * 
+	 * A partir de um id do objeto em evidência, encontra a empresa controladora última
+	 * a empresa que são diretamente controladas e faz a chamada para construção da rede
+	 * de poder
+	 * @param resource $conn
+	 * @param int $id
+	 */
 	function search_by_id($conn,$id) {
 		$result = mysql_db_query('proprietarios_redes', "select * from assoc where id = $id", $conn);
 		
@@ -53,10 +63,11 @@ class powerNetwork {
 			die("Rede de poder não encontrada\n");
 		}
 
-		$controlled = [];
-		$parent 	= [];
-		
-		$row = mysql_fetch_array($result, MYSQL_ASSOC);
+		$controlled = array();
+		$parent 	= array();
+		$top_level	= false;
+		$row 		= mysql_fetch_array($result, MYSQL_ASSOC);
+		$first_node = $row;
 		
 		if( $row['id_empresaControladora'] ) {
 			$has_controlled = 1;
@@ -71,12 +82,15 @@ class powerNetwork {
 					$has_controlled = 0;
 				}
 			}
+		} else {
+			$parent[0] = $row;
+			$top_level = true;
 		}
-		
+//		print_r($parent); die;
 		$total = count($parent)-1;
 		
-		if($parent[$total]['ehControladoraUltima']) {
-			$direct_controlled 	= [];
+		if($parent[$total]['ehControladoraUltima'] || $top_level) {
+			$direct_controlled 	= array();
 			if( strpos($parent[$total]['id_empresasControladas'], "|") ) {
 				$controlled_ids = explode('|', $parent[$total]['id_empresasControladas']);
 			} else {
@@ -95,12 +109,38 @@ class powerNetwork {
 			
 		}
 			
- 		$total_result = $this->undirected_controlled($conn, $direct_controlled);
- 		print_r($total_result);
-// 		print_r($direct_controlled);
-// 		print_r($parent); 
+ 		$this->undirected_controlled($conn, $direct_controlled);
+ 		
+ 		$network = array(
+ 			'company_key'	=> array(
+ 				'nome' 		=> $first_node['nome'],
+ 				'registro' 	=> $first_node['registro'],
+ 				'id' 		=> $first_node['id'],
+ 			),
+ 			'controller'	=> array(
+ 				'nome' 		=> $parent[count($parent)-1]['nome'],
+ 				'registro' 	=> $parent[count($parent)-1]['registro'],
+ 				'id' 		=> $parent[count($parent)-1]['id'],
+ 			),
+ 			'directed' 		=> $direct_controlled,
+ 			'undirected' 	=> $this->glob 
+ 		);
+ 		
+ 		unset($this->glob);
+ 		
+ 		print_r($network);
+ 
 		die;
 	}
+	
+	/**
+	 * 
+	 * A partir das empresas diretamente controladas,
+	 * busca todas as que fazem parte da rede de poder, recursivamente
+	 * @param $conn
+	 * @param $companies
+	 * @param $general
+	 */
 	
 	function undirected_controlled($conn, $companies, $general = false) {
 		foreach($companies as $d) {
@@ -133,24 +173,33 @@ class powerNetwork {
 				$total 	= array_merge ($aux, $general);
 			}
 			
-			if($undirected_controlled) {
-  				print_r($total);
-//  				print_r($undirected_controlled);
-				$this->undirected_controlled($conn, $undirected_controlled, $total);
-			} else {
-				
-				echo ('acabou');
-// 				return 0;
-			}
-
+			$this->glob = $total;
+			
+			$this->undirected_controlled($conn, $undirected_controlled, $total);
 		}
 	}
+	
+	/**
+	 * 
+	 * Retorna um registro, a partir do id
+	 * @param $conn
+	 * @param $id
+	 */
 	
 	function search_unique($conn, $id) {
 		$result = mysql_db_query('proprietarios_redes', "select * from assoc where id = $id", $conn);
 		
 		return mysql_fetch_assoc($result, MYSQL_ASSOC);
 	}
+	
+	/**
+	 * 
+	 * Essa função é auxiliar
+	 * Consome um arquivo de texto, contendo os objetos de pesquisa
+	 * verifica sua existência no banco e cria um arquivo de texto 
+	 * com os registros encontrados, referentes aos objetos de pesquisa
+	 * @param $conn
+	 */
 	
 	function check_list_of_companies($conn) {
 		$comp = file('/home/gian/Documents/aware/projeto-copa/lista-empresas-proprietarias');
@@ -169,16 +218,73 @@ class powerNetwork {
 			} else {
 				$text = 0;
 			}
-// 			if($i == 4){
-// 				die;
-// 			}
+
 			file_put_contents('/home/gian/Documents/aware/projeto-copa/found-companies', $title.$text."\n", FILE_APPEND );
 		}
 		
 		return false;
 	}
 	
+	function save_network_power($conn, $network) {
+		$company_key;
+		foreach ($network as $key => $value) {
+			if($key == 'company_key') {
+				$company_key = $value;
+				if($network['company_key']['registro'] == $network['controller']['registro']){
+					$is_controller = 1;
+				}
+				
+//				esse código ta escroto, tem que ver se ta presente e não verificar uma por uma, amanha termino
+				
+				$info = array(
+					'key_id' => $value['id'], 
+					'is_controller' => $is_controller ? 1 : 0, 
+					'is_directed_controlled' => 0,
+					'is_undirected_controlled', 
+					'reference_id', 
+					'name', 
+					'registro', 
+					'key_name', 
+					'is_key'
+				);
+			}
+		}
+	}
+	
+	
+	function populate($conn, $str) {
+		$insert = 
+			"INSERT INTO 
+				custom_networks (
+					id,
+					key_id, 
+					is_controller, 
+					is_directed_controlled,
+					is_undirected_controlled, 
+					reference_id, 
+					name, 
+					registro, 
+					key_name, 
+					is_key
+				VALUES (
+					null,
+					$str[key_id],
+					$str[key_id],
+					$str[is_controller], 
+					$str[is_directed_controlled],
+					$str[is_undirected_controlled], 
+					$str[reference_id], 
+					$str[name], 
+					$str[registro], 
+					$str[key_name], 
+					$str[is_key]
+				)";
+		
+		$result = mysql_db_query('vaimudar', $insert, $conn);
+		
+		return $result;
+	}
+	
 }
-
 
 ?>

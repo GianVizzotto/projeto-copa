@@ -1,5 +1,4 @@
 <?php
-
 include ('connect.php');
 include('/home/gian/proprietarios/htdocs/wp-blog-header.php');
 // require('/home/gian/proprietarios/htdocs/wp-includes/taxonomy.php');
@@ -16,9 +15,9 @@ class buildStructure {
 	function build($conn) {
 	
 		
-		$parent_categories = ['Partidos','Empresas', 'UF', 'Cidade', 'Análises de poder', 'Obras'];
+		$parent_categories = array('Partidos','Empresas', 'UF', 'Cidade', 'Análises de poder', 'Obras');
 		$parent_categories = array(
-			'Partidos' => ['Ano eleitoral'],
+			'Partidos' => array('Ano eleitoral'),
 			'Empresas',
 			'Redes de poder',
 			'UF',

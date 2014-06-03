@@ -1,6 +1,5 @@
 <?php
 
-
 class createConnection //create a class for make connection
 {
     var $host		= "localhost";
@@ -22,7 +21,8 @@ class createConnection //create a class for make connection
         {
 
             $this->myconn = $conn;
-
+            
+            mysql_query("SET NAMES utf8", $this->myconn);
         }
 
         return $this->myconn;

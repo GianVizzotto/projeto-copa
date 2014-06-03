@@ -128,7 +128,7 @@ class powerNetwork {
  		
  		unset($this->glob);
  		
- 		print_r($network);
+ 		$this->save_network_power($conn, $network);
  
 		die;
 	}
@@ -192,6 +192,105 @@ class powerNetwork {
 		return mysql_fetch_assoc($result, MYSQL_ASSOC);
 	}
 	
+	function save_network_power($conn, $network) {
+		if( $network['company_key']['registro'] == $network['controller']['registro'] ) {
+			$network['company_key']['is_controller'] = 1;
+			unset($network['controller']);
+		}
+		
+		$info = array(
+			'key_id' 					=> $network['company_key']['id'], 
+			'is_controller' 			=> isset($network['company_key']['is_controller']) ? 1 : 0,  
+			'is_directed_controlled' 	=> in_array( $network['company_key']['registro'], $network['directed'] ) ? 1 : 0,
+			'is_undirected_controlled' 	=> in_array( $network['company_key']['registro'], $network['undirected'] ) ? 1 : 0,
+			'reference_id'			 	=> $network['company_key']['id'],
+			'name' 						=> $network['company_key']['nome'],
+			'key_name' 					=> $network['company_key']['nome'],
+			'is_key'					=> 1,
+		);
+		echo "salvando empresa chave\n";
+		$this->populate($conn, $info);
+		unset($info);
+		
+		if( isset($network['controller']) ) {
+			$info = array(
+				'key_id' 					=> $network['company_key']['id'], 
+				'is_controller' 			=> 1,  
+				'is_directed_controlled' 	=> 0,
+				'is_undirected_controlled' 	=> 0,
+				'reference_id'			 	=> $network['controller']['id'],
+				'name' 						=> $network['controller']['nome'],
+				'registry' 					=> $network['controller']['registro'],
+				'key_name' 					=> $network['company_key']['nome'],
+				'is_key'					=> 1,
+			);
+			echo "salvando empresa controladora\n";
+			$this->populate($conn, $info);
+		}
+		
+		$size 		= count($network['directed'])-1;
+		$key_name 	= 'directed';
+		$i 			= 0;
+		$stop 		= false;
+		
+		while(!$stop) {
+			foreach ($network[$key_name] as $value) {
+				echo "salvando empresa ".$value['nome']."\n";
+				$info = array(
+					'key_id' 					=> $network['company_key']['id'], 
+					'is_controller' 			=> 0,  
+					'is_directed_controlled' 	=> $key_name == 'directed' ? 1 : 0,
+					'is_undirected_controlled' 	=> $key_name == 'undirected' ? 1 : 0,
+					'reference_id'			 	=> $value['id'],
+					'name' 						=> $value['nome'],
+					'registry' 					=> $value['registro'],
+					'key_name' 					=> $network['company_key']['nome'],
+					'is_key'					=> 0,
+				);
+				
+				$this->populate($conn, $info);
+			}
+			$i++;
+			
+			$key_name = 'undirected';
+			if( $i == 2 ) {
+				$stop = true;
+			}
+		}
+	}
+	
+	function populate($conn, $str) {
+		$registry = isset($str['registry']) ? $str['registry'] : 'null';
+		 
+		$insert = 
+			"INSERT INTO
+			custom_networks (
+			id,
+			key_id, 
+			is_controller, 
+			is_directed_controlled,
+			is_undirected_controlled, 
+			reference_id, 
+			name, 
+			registry, 
+			key_name, 
+			is_key)
+			VALUES (
+			null,".
+			$str['key_id'].",".
+			$str['is_controller'].",". 
+			$str['is_directed_controlled'].",".
+			$str['is_undirected_controlled']."," .
+			$str['reference_id'].",". 
+			"'".$str['name']."',". 
+			$registry.",". 
+			"'".$str['key_name']."',". 
+			$str['is_key'].
+			");";
+				
+		$result = mysql_db_query('vaimudar', trim(preg_replace('/\t+/', '', $insert)), $conn);
+	}
+	
 	/**
 	 * 
 	 * Essa função é auxiliar
@@ -200,7 +299,6 @@ class powerNetwork {
 	 * com os registros encontrados, referentes aos objetos de pesquisa
 	 * @param $conn
 	 */
-	
 	function check_list_of_companies($conn) {
 		$comp = file('/home/gian/Documents/aware/projeto-copa/lista-empresas-proprietarias');
 		
@@ -223,66 +321,6 @@ class powerNetwork {
 		}
 		
 		return false;
-	}
-	
-	function save_network_power($conn, $network) {
-		$company_key;
-		foreach ($network as $key => $value) {
-			if($key == 'company_key') {
-				$company_key = $value;
-				if($network['company_key']['registro'] == $network['controller']['registro']){
-					$is_controller = 1;
-				}
-				
-//				esse código ta escroto, tem que ver se ta presente e não verificar uma por uma, amanha termino
-				
-				$info = array(
-					'key_id' => $value['id'], 
-					'is_controller' => $is_controller ? 1 : 0, 
-					'is_directed_controlled' => 0,
-					'is_undirected_controlled', 
-					'reference_id', 
-					'name', 
-					'registro', 
-					'key_name', 
-					'is_key'
-				);
-			}
-		}
-	}
-	
-	
-	function populate($conn, $str) {
-		$insert = 
-			"INSERT INTO 
-				custom_networks (
-					id,
-					key_id, 
-					is_controller, 
-					is_directed_controlled,
-					is_undirected_controlled, 
-					reference_id, 
-					name, 
-					registro, 
-					key_name, 
-					is_key
-				VALUES (
-					null,
-					$str[key_id],
-					$str[key_id],
-					$str[is_controller], 
-					$str[is_directed_controlled],
-					$str[is_undirected_controlled], 
-					$str[reference_id], 
-					$str[name], 
-					$str[registro], 
-					$str[key_name], 
-					$str[is_key]
-				)";
-		
-		$result = mysql_db_query('vaimudar', $insert, $conn);
-		
-		return $result;
 	}
 	
 }

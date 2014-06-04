@@ -222,7 +222,7 @@ class powerNetwork {
 				'name' 						=> $network['controller']['nome'],
 				'registry' 					=> $network['controller']['registro'],
 				'key_name' 					=> $network['company_key']['nome'],
-				'is_key'					=> 1,
+				'is_key'					=> 0
 			);
 			echo "salvando empresa controladora\n";
 			$this->populate($conn, $info);

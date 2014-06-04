@@ -7,41 +7,62 @@ $connection = new createConnection(); //i created a new object
 
 $p = new buildStructure();
 
-$p->build( $connection->connectToDatabase() );
+$p->create_posts_network_power( $connection->connectToDatabase() );
 
 class buildStructure {
 	
-	#Criando as categorias pai;
-	function build($conn) {
-	
+	function create_posts_network_power($conn) {
+		$keys = $this->search_keys($conn);
 		
-		$parent_categories = array('Partidos','Empresas', 'UF', 'Cidade', 'Análises de poder', 'Obras');
-		$parent_categories = array(
-			'Partidos' => array('Ano eleitoral'),
-			'Empresas',
-			'Redes de poder',
-			'UF',
-			'Análises de poder',
-			
-		);
-		
-		$i = 0;
-		while($parent_categories) {
-		
-			if( !term_exists($parent_categories[$i]) ) {
-				wp_insert_term($parent_categories[$i], 'category');
+		while($row = mysql_fetch_assoc($keys, MYSQL_ASSOC)){
+			if( term_exists($row['name']) ) {
+				continue;
 			}
 			
-			$i++;
+			$category 	= wp_insert_term($row['name'], 'redes-de-poder');
+			$companies	= $this->search_by_key($conn, $row['reference_id']);
+			
+			while($company = mysql_fetch_assoc($companies, MYSQL_ASSOC)) {
+				$post = array (
+					'post_content' 	=> '',
+					'post_title'	=> $company['name'],
+					'post_type'		=> 'empresas',
+					'post_status'	=> 'publish',
+					'tax_input'		=> array('redes-de-poder') 
+				);
+				
+				$post_id = wp_insert_post($post);
+				
+				if($company['is_controller']){
+					$hierarchy = 'controladora';	
+				} elseif ($company['is_directed_controlled']) {
+					$hierarchy = 'diretamente_controlada';
+				} elseif ($company['is_undirected_controlled']) {
+					$hierarchy = 'indiretamente_controlada';
+				}
+				
+				wp_set_post_terms( $post_id, array($category['term_id']), 'redes-de-poder', true );
+				
+				add_post_meta($post_id, 'cnpj', $company['registry']);				 
+				add_post_meta($post_id, $hierarchy, 1);
+			}
 		}
+	}
+	
+	function search_keys($conn) {
+		return mysql_db_query('vaimudar', 'select * from custom_networks where is_key = 1', $conn);
+	}
+	
+	function search_by_key($conn, $key_id) {
+		return mysql_db_query('vaimudar', 'select * from custom_networks where key_id = '.$key_id.' and is_key = 0', $conn);
 	}
 	
 	function search_by_slug() {
 		$args = array(
-			'name' => $the_slug,
-			'post_type' => 'post',
-			'post_status' => 'publish',
-			'numberposts' => 1
+			'name' 			=> $the_slug,
+			'post_type' 	=> 'post',
+			'post_status' 	=> 'publish',
+			'numberposts' 	=> 1
 		);
 		
 		$post = get_posts();
@@ -50,6 +71,4 @@ class buildStructure {
 	}
 	
 }
-
-
 ?>

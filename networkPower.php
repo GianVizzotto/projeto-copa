@@ -108,8 +108,10 @@ class powerNetwork {
 			}
 			
 		}
-			
- 		$this->undirected_controlled($conn, $direct_controlled);
+
+		if(isset($direct_controlled)) {
+ 			$this->undirected_controlled($conn, $direct_controlled);
+		}
  		
  		$network = array(
  			'company_key'	=> array(
@@ -122,7 +124,7 @@ class powerNetwork {
  				'registro' 	=> $parent[count($parent)-1]['registro'],
  				'id' 		=> $parent[count($parent)-1]['id'],
  			),
- 			'directed' 		=> $direct_controlled,
+ 			'directed' 		=> isset($direct_controlled) ? $direct_controlled : array(),
  			'undirected' 	=> $this->glob 
  		);
  		
@@ -193,19 +195,31 @@ class powerNetwork {
 	}
 	
 	function save_network_power($conn, $network) {
+//		print_r($network);die;
 		if( $network['company_key']['registro'] == $network['controller']['registro'] ) {
+			
 			$network['company_key']['is_controller'] = 1;
 			unset($network['controller']);
+			
+		} elseif ( $this->in_multiarray($network['company_key']['registro'], $network['directed'], 'registro') ) {
+			
+			$network['company_key']['is_directed_controlled'] = 1;
+			 
+		} elseif ( $this->in_multiarray($network['company_key']['registro'], $network['undirected'], 'registro') ) {
+			
+			$network['company_key']['is_undirected_controlled'] = 1;
+			
 		}
 		
 		$info = array(
 			'key_id' 					=> $network['company_key']['id'], 
 			'is_controller' 			=> isset($network['company_key']['is_controller']) ? 1 : 0,  
-			'is_directed_controlled' 	=> in_array( $network['company_key']['registro'], $network['directed'] ) ? 1 : 0,
-			'is_undirected_controlled' 	=> in_array( $network['company_key']['registro'], $network['undirected'] ) ? 1 : 0,
+			'is_directed_controlled' 	=> isset($network['company_key']['is_directed_controlled']) ? 1 : 0,
+			'is_undirected_controlled' 	=> isset($network['company_key']['is_undirected_controlled']) ? 1 : 0,
 			'reference_id'			 	=> $network['company_key']['id'],
 			'name' 						=> $network['company_key']['nome'],
 			'key_name' 					=> $network['company_key']['nome'],
+			'registry' 					=> $network['company_key']['registro'],
 			'is_key'					=> 1,
 		);
 		echo "salvando empresa chave\n";
@@ -234,21 +248,23 @@ class powerNetwork {
 		$stop 		= false;
 		
 		while(!$stop) {
-			foreach ($network[$key_name] as $value) {
-				echo "salvando empresa ".$value['nome']."\n";
-				$info = array(
-					'key_id' 					=> $network['company_key']['id'], 
-					'is_controller' 			=> 0,  
-					'is_directed_controlled' 	=> $key_name == 'directed' ? 1 : 0,
-					'is_undirected_controlled' 	=> $key_name == 'undirected' ? 1 : 0,
-					'reference_id'			 	=> $value['id'],
-					'name' 						=> $value['nome'],
-					'registry' 					=> $value['registro'],
-					'key_name' 					=> $network['company_key']['nome'],
-					'is_key'					=> 0,
-				);
-				
-				$this->populate($conn, $info);
+			if(isset($network[$key_name])) {
+				foreach ($network[$key_name] as $value) {
+					echo "salvando empresa ".$value['nome']."\n";
+					$info = array(
+						'key_id' 					=> $network['company_key']['id'], 
+						'is_controller' 			=> 0,  
+						'is_directed_controlled' 	=> $key_name == 'directed' ? 1 : 0,
+						'is_undirected_controlled' 	=> $key_name == 'undirected' ? 1 : 0,
+						'reference_id'			 	=> $value['id'],
+						'name' 						=> $value['nome'],
+						'registry' 					=> $value['registro'],
+						'key_name' 					=> $network['company_key']['nome'],
+						'is_key'					=> 0,
+					);
+					
+					$this->populate($conn, $info);
+				}
 			}
 			$i++;
 			
@@ -321,6 +337,19 @@ class powerNetwork {
 		}
 		
 		return false;
+	}
+	
+	function in_multiarray($elem, $array, $field) {
+		if($array) {
+			foreach($array as $value) {
+		    	if( trim($elem) == $value[trim($field)] ) {
+		    		
+		    		return true;
+		    	}
+		    }	
+		}
+
+	    return false;
 	}
 	
 }

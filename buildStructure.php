@@ -19,7 +19,7 @@ class buildStructure {
 				continue;
 			}
 			
-			$category 	= wp_insert_term($row['name'], 'redes-de-poder');
+			$category 	= wp_insert_term($row['name'], 'redes-de-poder', array('description' => 'cnpj: '.$row['registry']));
 			$companies	= $this->search_by_key($conn, $row['reference_id']);
 			
 			while($company = mysql_fetch_assoc($companies, MYSQL_ASSOC)) {
@@ -57,7 +57,7 @@ class buildStructure {
 		return mysql_db_query('vaimudar', 'select * from custom_networks where key_id = '.$key_id.' and is_key = 0', $conn);
 	}
 	
-	function search_by_slug() {
+	/*function search_by_slug() {
 		$args = array(
 			'name' 			=> $the_slug,
 			'post_type' 	=> 'post',
@@ -68,7 +68,7 @@ class buildStructure {
 		$post = get_posts();
 		
 		print_r($post); die;
-	}
+	}*/
 	
 }
 ?>

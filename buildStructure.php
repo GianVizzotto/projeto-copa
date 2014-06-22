@@ -120,12 +120,13 @@ class buildStructure {
 				'atualizacao_transp' 		=> $row['atualizado_em']
 			);
 			
-			add_post_meta($post[0]->ID, 'valor_previsto_transp', $row['valor_previsto_transp']);
-			add_post_meta($post[0]->ID, 'valor_executado_transp', $row['valor_executado_transp']);
-			add_post_meta($post[0]->ID, 'valor_financiado_transp', $row['valor_financiado_transp']);
-			add_post_meta($post[0]->ID, 'financiador_transp', $row['financiador_transp']);
-			add_post_meta($post[0]->ID, 'progresso_transp', $row['progresso_transp']);
-			add_post_meta($post[0]->ID, 'atualizacao_transp', $row['atualizado_em']);
+			add_post_meta($post[0]->ID, 'valor_previsto_transp', $row['valor_previsto_transp'],1);
+			add_post_meta($post[0]->ID, 'valor_executado_transp', $row['valor_executado_transp'],1);
+			add_post_meta($post[0]->ID, 'valor_financiado_transp', $row['valor_financiado_transp'],1);
+			add_post_meta($post[0]->ID, 'financiador_transp', $row['financiador_transp'],1);
+			add_post_meta($post[0]->ID, 'progresso_transp', $row['progresso_transp'],1);
+			add_post_meta($post[0]->ID, 'atualizacao_transp', $row['atualizado_em'],1);
+			add_post_meta($post[0]->ID, 'id_transp', $row['id_transp'],1);
 		}
 	}
 	

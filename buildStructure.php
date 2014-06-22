@@ -7,10 +7,12 @@ $connection = new createConnection(); //i created a new object
 
 $p = new buildStructure();
 
-if($argv[1] == 'groups') {
+if( $argv[1] == 'groups' ) {
 	$p->insert_from_empresas( $connection->connectToDatabase() );
+} elseif( $argv[1] = 'obras' ) {
+	$p->complete_obras( $connection->connectToDatabase() );	
 } else {
-	$p->create_posts_network_power( $connection->connectToDatabase() );	
+	$p->create_posts_network_power( $connection->connectToDatabase() );
 }
 
 class buildStructure {
@@ -97,5 +99,35 @@ class buildStructure {
 	function dedup_terms() {
 		
 	}
+	
+	function complete_obras($conn) {
+		$result = mysql_db_query('vaimudar', "select * from obras_cgu where slug_wp is not null and slug_wp <> '' ");
+
+		while( $row = mysql_fetch_assoc($result, MYSQL_ASSOC) ) {
+			$args = array(
+			  'name' 		=> $row['slug_wp'],
+			  'post_type' 	=> 'obras',
+			);
+			
+			$post = get_posts($args);
+			
+			$args = array(
+				'valor_previsto_transp' 	=> $row['valor_previsto_transp'],
+				'valor_executado_transp' 	=> $row['valor_executado_transp'],
+				'valor_executado_transp' 	=> $row['valor_executado_transp'],
+				'valor_financiado_transp' 	=> $row['valor_financiado_transp'],
+				'progresso_transp' 			=> $row['progresso_transp'],
+				'atualizacao_transp' 		=> $row['atualizado_em']
+			);
+			
+			add_post_meta($post[0]->ID, 'valor_previsto_transp', $row['valor_previsto_transp']);
+			add_post_meta($post[0]->ID, 'valor_executado_transp', $row['valor_executado_transp']);
+			add_post_meta($post[0]->ID, 'valor_financiado_transp', $row['valor_financiado_transp']);
+			add_post_meta($post[0]->ID, 'financiador_transp', $row['financiador_transp']);
+			add_post_meta($post[0]->ID, 'progresso_transp', $row['progresso_transp']);
+			add_post_meta($post[0]->ID, 'atualizacao_transp', $row['atualizado_em']);
+		}
+	}
+	
 }
 ?>
